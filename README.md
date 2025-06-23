@@ -1,32 +1,64 @@
-# Intrusion Detection System (IDS) with Electron GUI
+# Network Intrusion Detection Systems (IDS) Project
 
-This project provides a simple Intrusion Detection System (IDS) written in C, coupled with a modern graphical user interface (GUI) built using Electron, HTML, CSS, and JavaScript. The IDS monitors network traffic for suspicious patterns based on predefined and custom threat signatures, logging alerts and displaying them in real-time within the GUI.
+This repository contains two distinct Intrusion Detection System (IDS) implementations:
+
+    A C-based IDS backend with an Electron-based Graphical User Interface (GUI).
+
+    A standalone Python-based IDS.
+
+Both systems are designed to monitor network traffic for suspicious activities, log alerts, and provide insights into potential threats.
+Project Overview
+
+This project showcases two different approaches to building an IDS:
+
+    C IDS with Electron GUI: A high-performance, low-level IDS written in C that leverages libpcap for direct network packet capture. It communicates with a modern desktop GUI built with Electron, allowing users to monitor live alerts, manage threat signatures, and check IDS status through an intuitive interface. This setup focuses on performance and a rich user experience.
+
+    Python IDS: A more accessible and extensible IDS implemented purely in Python using Scapy for packet handling and scikit-learn for machine learning-driven anomaly detection. This version is ideal for prototyping, research, and environments where Python's ecosystem is preferred.
+
+## Important Note: These are two separate IDS implementations. The Electron GUI is designed to interact specifically with the C IDS backend. The Python IDS runs as a standalone command-line application.
 Features
+Shared IDS Capabilities (Conceptual)
 
-    Network Packet Sniffing: Utilizes libpcap to capture and analyze live network traffic.
+    Network Packet Sniffing: Both IDSs capture live network traffic.
 
-    Threat Detection: Identifies various network attacks (e.g., SYN Flood, Port Scans, ICMP Flood, XMAS/FIN/NULL Scans, RST Flood) based on a set of customizable signatures.
+    Threat Detection: Identify suspicious patterns.
 
-    Configurable Parameters: Easily adjust detection thresholds, logging options, and network interface via config.json.
+    Logging: Record detected alerts.
 
-    Customizable Threat Signatures: Upload new or modified JSON-based threat signatures directly through the GUI without recompiling the C backend.
+## C IDS Specific Features (with Electron GUI)
 
-    Live Alerts Log: View detected alerts streamed in real-time directly in the GUI's "Live Logs" tab.
+    High Performance: C-based backend for efficient packet processing.
+
+    Configurable Parameters: Adjustable detection thresholds, logging options, and network interface via config.json.
+
+    Customizable Threat Signatures: Upload JSON-based threat signatures directly through the GUI.
+
+    Live Alerts Log in GUI: View detected alerts streamed in real-time.
 
     IDS Status Monitoring: Check the current operational status of the C backend from the GUI.
 
-    Modern User Interface: An intuitive and responsive Electron-based GUI for easy interaction.
+    Modern User Interface: An intuitive and responsive Electron-based GUI.
 
-    Extensible C Backend: Designed with a modular structure to allow for easy addition of new detection logic.
+## Python IDS Specific Features
+
+    Ease of Use: Written in Python, leveraging a rich ecosystem of libraries.
+
+    Traffic Analysis: Maintains flow-level statistics (packet count, byte count, duration).
+
+    Feature Extraction: Extracts features like packet size, rates, TCP flags, and window size.
+
+    Signature-Based Detection: Predefined rules (as Python lambda functions) for known attack patterns.
+
+    Anomaly-Based Detection: Uses scikit-learn's Isolation Forest model to detect unusual traffic.
 
 ## Requirements
+For the C IDS Backend (ids_final)
 
-To run this IDS, you will need:
-For the C Backend (ids_final)
+    Operating System: Linux / macOS (due to libpcap and POSIX threads usage).
 
     C Compiler: GCC (GNU Compiler Collection) is recommended.
 
-    libpcap-dev (or equivalent): This library is essential for packet capture.
+    libpcap-dev (or equivalent): Essential for network packet sniffing.
 
         Debian/Ubuntu: sudo apt-get install libpcap-dev
 
@@ -36,21 +68,34 @@ For the C Backend (ids_final)
 
     pthread: POSIX threads library (usually available by default on Linux/macOS).
 
-## For the Electron GUI
+For the Electron GUI (to run with C IDS)
 
-    Node.js & npm: Download and install from nodejs.org. npm (Node Package Manager) is included with Node.js.
+    Node.js & npm: Download and install from nodejs.org. npm is included with Node.js.
+
+For the Python IDS
+
+    Python 3.x
+
+    pip (Python package installer)
+
+    Required Python Libraries:
+
+        scapy
+
+        scikit-learn
+
+        numpy
 
 ## Setup Instructions
-
-Follow these steps to set up and run the IDS:
+Setting up the C IDS Backend and Electron GUI
 
     Navigate to the Project Directory:
     Open your terminal and change to the project's root directory where ids_final.c, main.js, package.json, etc., are located.
 
     cd path/to/your/IDS/project
 
-    Configure the IDS (Optional):
-    Edit config.json to customize parameters like the network interface ("interface": "eth0"), alert log file, and various attack detection rates.
+    Configure the C IDS (Optional but Recommended):
+    Edit config.json to customize parameters. Crucially, ensure the "interface" matches your active network interface (e.g., eth0, wlan0, en0, Wi-Fi). You can find this using ifconfig or ip addr (Linux/macOS) or ipconfig (Windows).
 
     {
         "interface": "eth0",
@@ -66,35 +111,54 @@ Follow these steps to set up and run the IDS:
         "gui_listen_port": 8888
     }
 
-    Important: Ensure the "interface" matches your active network interface (e.g., eth0, wlan0, en0, Wi-Fi). You can find this using ifconfig or ip addr.
-
     Compile the C Backend:
-    Compile the ids_final.c and cJSON.c source files using GCC.
+    Compile ids_final.c and cJSON.c using GCC.
 
     gcc ids_final.c cJSON.c -o ids_final -lpcap -pthread
 
-    This command compiles the C code and links the necessary libraries, creating an executable file named ids_final.
-
     Install Electron GUI Dependencies:
-    Install the Node.js dependencies required for the Electron application.
+    Install the Node.js dependencies for the Electron application.
 
     npm install
 
-## Running the IDS
+## Setting up the Python IDS
 
-To run the IDS, you need to start both the C backend and the Electron GUI.
+    Save the Python Code:
+    Save the Python code (provided in previous turns) to a file named python_ids.py (or any other .py extension).
+
+    Install Python Dependencies:
+    Open your terminal and install the required Python libraries:
+
+    pip install scapy scikit-learn numpy
+
+    Configure the Network Interface in Python Code:
+    Open python_ids.py and modify the interface variable within the main() function to match your system's network interface.
+
+    # Inside the main() function in python_ids.py
+    if sys.platform.startswith('linux'):
+        interface = "wlan0" # <-- ADJUST THIS TO YOUR ACTUAL LINUX INTERFACE (e.g., "eth0")
+    elif sys.platform == 'darwin':
+        interface = "en0" # <-- ADJUST THIS TO YOUR ACTUAL macOS INTERFACE
+    elif sys.platform == 'win32':
+        interface = None # On Windows, you might need to specify the exact name or GUID.
+                         # If None, Scapy might attempt auto-detection, but explicit is better.
+        logging.warning("On Windows, you might need to specify the exact interface name (e.g., 'Ethernet 2') or GUID if automatic detection fails.")
+    else:
+        interface = None
+
+    packet_capture.start_capture(interface=interface)
+
+## Running the IDSs
+Running the C IDS with Electron GUI
+
+To run this IDS, you must start both the C backend and the Electron GUI.
 
     Start the C Backend:
-    Open a terminal and run the compiled C executable. This often requires superuser privileges to access network interfaces for packet sniffing.
+    Open a terminal and run the compiled C executable. This typically requires superuser privileges for network sniffing.
 
     sudo ./ids_final
 
-    You should see output similar to:
-
-    Configuration loaded. GUI Listen Port: 8888
-    Alerts will be logged to ids_alerts.log
-    GUI communication server listening on port 8888
-    Sniffing on interface eth0...
+    You should see initial configuration and sniffing messages in this terminal.
 
     Start the Electron GUI:
     Open a separate terminal in the same project directory and start the Electron application.
@@ -103,17 +167,26 @@ To run the IDS, you need to start both the C backend and the Electron GUI.
 
     This will launch the IDS GUI window.
 
-## Using the IDS GUI
+## Running the Python IDS
 
-Once the GUI is running, navigate through the tabs:
+To run the Python IDS, execute the Python script with root/administrator privileges directly from the command line.
 
-    Home: Provides a dashboard overview (currently placeholder for packet/alert counts).
+sudo python3 python_ids.py
 
-    Live Logs: This is where live network alerts will appear.
+(On Windows, open Command Prompt or PowerShell as Administrator and run python python_ids.py)
 
-        Click "Start Live Log" to begin streaming alerts from the C backend to the GUI.
+You will see all logging and alert output directly in the terminal where you run this command.
+Using the C IDS GUI
 
-        Click "Stop Live Log" to halt the streaming.
+Once the GUI is running (after starting the C backend and npm start):
+
+    Home: Provides a dashboard overview (currently placeholder widgets).
+
+    Live Logs: This is the primary view for real-time alerts.
+
+        Click "Start Live Log" to begin streaming alerts from the C backend.
+
+        Click "Stop Live Log" to halt the stream.
 
     Signatures: Upload custom threat signatures.
 
@@ -123,60 +196,86 @@ Once the GUI is running, navigate through the tabs:
 
         Refer to signatures.json for the expected format.
 
-    Status: Displays the current status of the IDS C backend.
+    Status: Displays the current operational status of the C IDS backend.
 
         Click "Refresh Status" to get the latest update.
 
-## Uploading Custom Threat Signatures
+## Customizing Threat Signatures
+For the C IDS
 
-The signatures.json file provides examples of the expected format. Each signature object should have:
+Threat signatures are JSON objects. You can modify the signatures.json file directly or upload new signatures via the GUI. Each signature should have:
 
-    "name": A unique name for the signature.
+    "name": A unique name.
 
-    "description": A brief explanation of the threat.
+    "description": An explanation of the threat.
 
-    "severity": (e.g., "HIGH", "MEDIUM", "LOW")
+    "severity": E.g., "HIGH", "MEDIUM", "LOW".
 
-    "condition": A string representing the condition that triggers the alert (e.g., "syn_flood_attack", "xmas_scan").
+    "condition": A string that corresponds to a condition evaluated in ids_final.c (e.g., "syn_flood_attack", "xmas_scan").
 
-Example signatures.json structure:
+## Example signatures.json structure:
 
         [
             {
                 "name": "SYN Flood Attack",
-                "description": "High rate of SYN packets...",
+                "description": "High rate of SYN packets from a single source to a single destination, indicating a SYN flood.",
                 "severity": "HIGH",
                 "condition": "syn_flood_attack"
             },
             {
-                "name": "XMAS Scan Detected",
-                "description": "TCP packet with FIN, URG, and PUSH flags set...",
+                "name": "TCP Port Scan (Low Ports)",
+                "description": "Multiple connection attempts to various low-numbered TCP ports (0-1023) on a single host.",
                 "severity": "MEDIUM",
-                "condition": "xmas_scan"
+                "condition": "tcp_port_scan_low_ports"
             }
         ]
 
-To upload:
+For the Python IDS
 
-    Go to the "Signatures" tab in the GUI.
+Signature rules are defined directly within the DetectionEngine class's load_signature_rules method in the python_ids.py file. Each rule is a dictionary with a description and a condition (a Python lambda function that takes features as input and returns True if the condition is met).
 
-    Paste your complete JSON array of signatures into the large text area.
+To add or modify rules, you'll need to edit the python_ids.py file directly and rerun the script.
+Testing and Triggering Alerts
 
-    Click the "Upload Signatures" button.
-    The status will update to indicate success or failure.
+To see either IDS in action, you need to generate network traffic that matches your defined signatures or exhibits anomalous behavior.
 
-## Troubleshooting
+    General Traffic: Simply browse the internet, download files, or stream videos.
 
-If you encounter issues, check the following:
+    Trigger a SYN Flood (requires hping3 or similar):
 
-    C Backend Terminal Output: Watch the terminal where sudo ./ids_final is running for any error messages, especially related to socket connections, send operations, or pcap errors.
+    sudo hping3 -S -p 80 --flood <TARGET_IP_ADDRESS>
 
-    Electron App Console (Main Process): In the Electron app menu, go to View > Toggle Developer Tools (this is usually for the main process). Check the "Console" tab for errors like Error with live log connection or parsing issues.
+    (Replace <TARGET_IP_ADDRESS> with an IP address on your network, or 127.0.0.1 for localhost if sniffing on lo or lo0).
+    You should see "SYN Flood" alerts.
 
-    Electron App Console (Renderer Process): Press Ctrl+Shift+I (Windows/Linux) or Cmd+Option+I (macOS) in the GUI window. Check the "Console" tab for errors in renderer.js or if logs are being received by the renderer but not displayed (e.g., due to CSS).
+    Trigger a Port Scan (requires nmap or similar):
 
-    ids_alerts.log: Verify if alerts are being written to this file by the C backend. If they are, but not appearing in the GUI, the issue is with the live log streaming. If not, the issue is with the IDS detection logic or the traffic itself.
+    nmap -sS -p 1-1000 <TARGET_IP_ADDRESS>
 
-    Network Interface: Ensure the interface specified in config.json is correct and active.
+    This will generate many small packets to different ports, potentially triggering port scan rules.
 
-    Firewall: Temporarily disable your system's firewall to rule out connection blocking.
+## Logging
+C IDS
+
+    Alerts are logged to the file specified in config.json (default: ids_alerts.log).
+
+    Alerts are also streamed in real-time to the Electron GUI's "Live Logs" tab.
+
+    Console output provides status and debugging information.
+
+Python IDS
+
+    All alerts and informational/debug messages are logged directly to the terminal where the script is running.
+
+    Critical alerts are also written to ids_alerts.log (configurable in AlertSystem).
+
+## Shutting Down
+C IDS with Electron GUI
+
+    C Backend: Press Ctrl+C in the terminal where sudo ./ids_final is running.
+
+    Electron GUI: Simply close the application window.
+
+Python IDS
+
+    Press Ctrl+C in the terminal where sudo python3 python_ids.py is running. The script will perform a graceful shutdown.
