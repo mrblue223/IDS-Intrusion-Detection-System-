@@ -1,0 +1,14 @@
+{
+    "interface": "eth0",
+    "alert_log_file": "ids_alerts.log",
+    "cooldown_period_seconds": 10,
+    "syn_flood_packet_rate": 80,
+    "port_scan_packet_rate": 50,
+    "udp_flood_packet_rate": 90,
+    "icmp_flood_packet_rate": 70,
+    "xmas_fin_null_scan_packet_rate": 40,
+    "large_packet_bytes": 2000,
+    "invalid_tcp_flags_count": 7,
+    "gui_listen_port": 8888
+}
+

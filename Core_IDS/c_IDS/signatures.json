@@ -1,0 +1,62 @@
+[
+    {
+        "name": "SYN Flood Attack",
+        "description": "High rate of SYN packets from a single source to a single destination, indicating a SYN flood.",
+        "severity": "HIGH",
+        "condition": "syn_flood_attack"
+    },
+    {
+        "name": "TCP Port Scan (Low Ports)",
+        "description": "Multiple connection attempts to various low-numbered TCP ports (0-1023) on a single host.",
+        "severity": "MEDIUM",
+        "condition": "tcp_port_scan_low_ports"
+    },
+    {
+        "name": "TCP Port Scan (High Ports)",
+        "description": "Multiple connection attempts to various high-numbered TCP ports (1024-65535) on a single host.",
+        "severity": "MEDIUM",
+        "condition": "tcp_port_scan_high_ports"
+    },
+    {
+        "name": "UDP Flood Attack",
+        "description": "High rate of UDP packets from a single source to a single destination, indicating a UDP flood.",
+        "severity": "HIGH",
+        "condition": "udp_flood_attack"
+    },
+    {
+        "name": "ICMP Flood Attack",
+        "description": "High rate of ICMP packets from a single source to a single destination, indicating an ICMP flood.",
+        "severity": "HIGH",
+        "condition": "icmp_flood_attack"
+    },
+    {
+        "name": "XMAS Scan Detected",
+        "description": "TCP packet with FIN, URG, and PUSH flags set, typically used for stealth scanning.",
+        "severity": "MEDIUM",
+        "condition": "xmas_scan"
+    },
+    {
+        "name": "FIN Scan Detected",
+        "description": "TCP packet with only the FIN flag set, often used to bypass firewalls.",
+        "severity": "MEDIUM",
+        "condition": "fin_scan"
+    },
+    {
+        "name": "NULL Scan Detected",
+        "description": "TCP packet with no flags set, often used for stealth scanning.",
+        "severity": "MEDIUM",
+        "condition": "null_scan"
+    },
+    {
+        "name": "SYN-ACK without SYN",
+        "description": "Received a SYN-ACK packet without a prior SYN from the same source, potentially indicating a spoofed connection or odd network behavior.",
+        "severity": "LOW",
+        "condition": "syn_ack_no_syn"
+    },
+    {
+        "name": "RST Flood Attack",
+        "description": "High volume of TCP RST packets, possibly indicating an attempt to tear down connections.",
+        "severity": "HIGH",
+        "condition": "rst_flood"
+    }
+]

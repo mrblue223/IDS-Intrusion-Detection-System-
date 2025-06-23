@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Modern IDS GUI</title>
+    <link rel="stylesheet" href="./style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <nav class="sidebar">
+            <h2>IDS Dashboard</h2>
+            <ul class="nav-tabs">
+                <li><button id="tab-home" class="active"><i class="fas fa-home"></i> Home</button></li>
+                <li><button id="tab-logs"><i class="fas fa-stream"></i> Live Logs</button></li>
+                <li><button id="tab-signatures"><i class="fas fa-file-signature"></i> Signatures</button></li>
+                <li><button id="tab-status"><i class="fas fa-info-circle"></i> Status</button></li>
+                </ul>
+        </nav>
+
+        <main class="main-content">
+            <section id="home-view" class="content-section active">
+                <h2>Dashboard Overview</h2>
+                <div class="dashboard-grid">
+                    <div class="widget">
+                        <h3>Total Packets Processed</h3>
+                        <p id="total-packets-count">Loading...</p>
+                    </div>
+                    <div class="widget">
+                        <h3>Total Alerts Generated</h3>
+                        <p id="total-alerts-count">Loading...</p>
+                    </div>
+                </div>
+            </section>
+
+            <section id="logs-view" class="content-section">
+                <h2>Live Alerts Log</h2>
+                <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                    <button id="startLiveLog"><i class="fas fa-play"></i> Start Live Log</button>
+                    <button id="stopLiveLog" class="button-danger"><i class="fas fa-stop"></i> Stop Live Log</button>
+                </div>
+                <pre id="alerts-log" style="height: 400px; overflow-y: scroll;"></pre>
+                </section>
+
+            <section id="signatures-view" class="content-section">
+                <h2>Upload Custom Signatures</h2>
+                <textarea id="signature-input" rows="15" placeholder="Paste your JSON signature array here..."></textarea>
+                <button id="upload-btn"><i class="fas fa-upload"></i> Upload Signatures</button>
+                <p id="upload-status"></p>
+            </section>
+
+            <section id="status-view" class="content-section">
+                <h2>IDS Current Status</h2>
+                <p id="ids-status-text">Loading...</p>
+                <button id="refresh-status"><i class="fas fa-redo-alt"></i> Refresh Status</button>
+            </section>
+        </main>
+    </div>
+
+    <script src="./renderer.js"></script>
+</body>
+</html>
