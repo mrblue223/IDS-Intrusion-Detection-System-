@@ -604,7 +604,7 @@
         "severity": "CRITICAL",
         "category": "Exploitation",
         "protocol": "HTTP/HTTPS/various",
-        "port": "80, 443",
+        "port": "any",
         "direction": "INBOUND",
         "condition_summary": "Presence of the specific Shellshock signature (`() { :;};`) followed by malicious commands in HTTP headers (e.g., User-Agent, Referer, Cookie) or other application inputs.",
         "detection_criteria": {
@@ -945,7 +945,7 @@
             "request_rate_per_uri": 10,
             "time_window_seconds": 60
         },
-        "false_positive_considerations": "Legitimate internal security scans. Whitelist known scanner IPs or User-Agents.",
+        "false_positive_considerations": "Legitimate search engine crawlers (should be whitelisted or respect robots.txt), performance monitoring tools.",
         "recommended_action": "Log and monitor, ensure web application is hardened, block if unauthorized."
     },
     {
@@ -1080,7 +1080,7 @@
         "recommended_action": "Isolate target, capture full packet trace, perform forensic analysis, apply patches urgently."
     },
     {
-        "name": "Suspicious RDP Activity (Non-Admin User Login)",
+        "name": "Suspicious RDP Login from Non-Admin User to Critical Server",
         "description": "A successful RDP login by a non-administrative user to a critical server, which might indicate a compromised account or unauthorized access.",
         "severity": "MEDIUM",
         "category": "Access/Post-Exploitation",
@@ -1836,5 +1836,411 @@
         },
         "false_positive_considerations": "Legitimate network changes by authorized administrators. Requires robust change management and strict role-based access control (RBAC).",
         "recommended_action": "Revert unauthorized changes, alert security team immediately, investigate source of modification, review firewall access policies."
+    },
+    {
+        "name": "Port Scan (FIN Scan)",
+        "description": "A stealthy port scan technique where the attacker sends a TCP FIN packet to a target port. An open port should not respond, while a closed port typically sends an RST. This can bypass some firewalls.",
+        "severity": "LOW",
+        "category": "Reconnaissance",
+        "protocol": "TCP",
+        "port": "0-65535",
+        "direction": "INBOUND",
+        "condition_summary": "Multiple TCP packets with only the FIN flag set (no SYN, ACK, RST) sent to various ports on a target host from a single source, expecting no response for open ports and RST for closed ports.",
+        "detection_criteria": {
+            "unique_dest_ports_per_source": 15,
+            "fin_flag_only": true,
+            "time_window_seconds": 60
+        },
+        "false_positive_considerations": "Malicious intent is high for such specific scans. Rarely seen in legitimate traffic.",
+        "recommended_action": "Log and alert, consider blocking source IP if unauthorized."
+    },
+    {
+        "name": "Port Scan (Xmas Scan)",
+        "description": "A port scan technique where the attacker sends a TCP packet with FIN, URG, and PSH flags set. An open port typically sends no response, while a closed port sends an RST. It's designed to evade simple packet filters.",
+        "severity": "LOW",
+        "category": "Reconnaissance",
+        "protocol": "TCP",
+        "port": "0-65535",
+        "direction": "INBOUND",
+        "condition_summary": "Multiple TCP packets with FIN, URG, PSH flags set (all 'lit up like a Christmas tree') to various ports on a target host from a single source.",
+        "detection_criteria": {
+            "unique_dest_ports_per_source": 15,
+            "fin_urg_psh_flags_set": true,
+            "time_window_seconds": 60
+        },
+        "false_positive_considerations": "Similar to FIN scans, rarely legitimate. Often indicative of malicious reconnaissance.",
+        "recommended_action": "Log and alert, consider blocking source IP if unauthorized."
+    },
+    {
+        "name": "HTTP Header Injection (CRLF Injection)",
+        "description": "An attacker injects Carriage Return (CR) and Line Feed (LF) characters into HTTP headers or responses, potentially leading to HTTP Response Splitting, cross-site scripting, or cache poisoning.",
+        "severity": "HIGH",
+        "category": "Exploitation",
+        "protocol": "HTTP/HTTPS",
+        "port": "80, 443",
+        "direction": "INBOUND",
+        "condition_summary": "HTTP request headers or parameters containing encoded or raw CRLF sequences (`%0d%0a`, `\\r\\n`) outside of standard header/body delimiters, leading to new header lines in the response.",
+        "detection_criteria": {
+            "payload_regex": "(%0d%0a|\\r\\n)(Location|Set-Cookie|Content-Type):",
+            "http_method": ["GET", "POST"],
+            "param_location": ["query", "header"]
+        },
+        "false_positive_considerations": "Rare in legitimate traffic. Some older systems might handle multi-line headers poorly, but direct injection is highly suspicious.",
+        "recommended_action": "Block request, sanitize input, ensure web server/application properly handles CRLF sequences."
+    },
+    {
+        "name": "LFI/RFI Exploitation Attempt (Log Poisoning)",
+        "description": "An attacker attempts to inject malicious code into server log files through LFI/RFI vulnerabilities, then includes these 'poisoned' logs into a web page to achieve remote code execution.",
+        "severity": "CRITICAL",
+        "category": "Exploitation",
+        "protocol": "HTTP/HTTPS",
+        "port": "80, 443",
+        "direction": "INBOUND",
+        "condition_summary": "Initial request containing shell commands or XSS payloads in User-Agent/Referer (targeting log files), followed by an LFI/RFI attempt on a log file path (e.g., `/var/log/apache2/access.log`) resulting in code execution.",
+        "detection_criteria": {
+            "first_request_user_agent_contains_payload": "(<?php system\\(|<script>alert)",
+            "second_request_uri_contains_log_path_lfi": "(\\/var\\/log\\/apache2\\/access\\.log|\\/var\\/log\\/nginx\\/access\\.log)",
+            "time_between_requests_seconds": 5
+        },
+        "false_positive_considerations": "Legitimate requests and log access are separate events; correlation reduces false positives. Requires the IDS to track sessions or related events.",
+        "recommended_action": "Block source IP, clean compromised log files, patch web application, implement proper input validation."
+    },
+    {
+        "name": "Malicious PDF Document Delivery",
+        "description": "Detection of PDF documents containing embedded JavaScript, shellcode, or exploits for PDF reader vulnerabilities, often delivered via email or web downloads.",
+        "severity": "HIGH",
+        "category": "Malware",
+        "protocol": "SMTP/HTTP/HTTPS",
+        "port": "25, 465, 587, 80, 443",
+        "direction": "INBOUND",
+        "condition_summary": "Email or web downloads of PDF files containing suspicious JavaScript objects (e.g., `/JS`, `/OpenAction`), embedded executables, or patterns indicating known PDF exploits.",
+        "detection_criteria": {
+            "file_extension": "pdf",
+            "pdf_internal_script_regex": "(\\/JS|\\/OpenAction|\\/AA|\\/Launch|\\/SubmitForm)",
+            "pdf_embedded_exe_signature": true
+        },
+        "false_positive_considerations": "Legitimate PDFs with interactive forms or JavaScript. Requires careful parsing of PDF structure and content.",
+        "recommended_action": "Block delivery, alert user, scan endpoint, deploy endpoint protection with PDF analysis."
+    },
+    {
+        "name": "Suspicious FTP Activity (Anonymous Write)",
+        "description": "Attempts to upload files to an FTP server's anonymous login directory, potentially indicating a staging area for malware or phishing content, or an attempt to exploit misconfigured FTP.",
+        "severity": "MEDIUM",
+        "category": "Initial Access/Staging",
+        "protocol": "FTP",
+        "port": "21",
+        "direction": "INBOUND",
+        "condition_summary": "FTP login using 'anonymous' credentials followed by a PUT (STOR) command to a public or sensitive directory.",
+        "detection_criteria": {
+            "ftp_login_username": "anonymous",
+            "ftp_command": "STOR",
+            "target_directory_regex": "(\\/pub\\/|\\/incoming\\/|\\/temp\\/)",
+            "source_external": true
+        },
+        "false_positive_considerations": "Legitimate anonymous upload services (if configured for that purpose).",
+        "recommended_action": "Disable anonymous write access, review FTP configurations, alert security team."
+    },
+    {
+        "name": "SSDP Reflection Attack",
+        "description": "An attacker sends a small UDP probe to misconfigured SSDP (Simple Service Discovery Protocol) devices (port 1900) on the internet, which then respond with large packets to a spoofed victim IP, causing a DDoS.",
+        "severity": "HIGH",
+        "category": "Denial of Service",
+        "protocol": "UDP",
+        "port": "1900",
+        "direction": "OUTBOUND/INBOUND",
+        "condition_summary": "High volume of outbound UDP probes to external port 1900, followed by a significantly larger volume of inbound UDP responses, with small request and large response sizes.",
+        "detection_criteria": {
+            "udp_request_packet_size_kb": 0.5,
+            "udp_response_packet_size_kb": 1.5,
+            "inbound_outbound_ratio": 5,
+            "dest_port": 1900,
+            "time_window_seconds": 5
+        },
+        "false_positive_considerations": "Legitimate SSDP discovery in internal networks (rarely external).",
+        "recommended_action": "Block outbound UDP 1900 to external, disable UPnP on external devices, implement BCP38."
+    },
+    {
+        "name": "Network Reconnaissance (Tracert/Traceroute)",
+        "description": "An attacker using `tracert` or `traceroute` to map network topology and identify routers and firewalls between their host and a target.",
+        "severity": "INFORMATIONAL",
+        "category": "Reconnaissance",
+        "protocol": "ICMP/UDP",
+        "port": "N/A (ICMP) / 33434-33534 (UDP)",
+        "direction": "INBOUND",
+        "condition_summary": "Sequential ICMP Time-Exceeded (Type 11, Code 0) messages from multiple hops (intermediate routers) in response to outbound probes, indicating a traceroute.",
+        "detection_criteria": {
+            "icmp_type": 11,
+            "icmp_code": 0,
+            "sequence_of_source_ips_consistent": true,
+            "dest_port_range": [33434, 33534],
+            "ttl_increase_over_time": true
+        },
+        "false_positive_considerations": "Legitimate network troubleshooting or monitoring. Whitelist known network engineers/monitoring tools.",
+        "recommended_action": "Log activity, monitor for escalation to more serious threats."
+    },
+    {
+        "name": "Anomalous Login Time/Day",
+        "description": "A successful login by a user account outside of their typical working hours or on unusual days (e.g., weekend login for a weekday-only user), potentially indicating compromise or insider threat.",
+        "severity": "MEDIUM",
+        "category": "Authentication/Insider Threat",
+        "protocol": "various",
+        "port": "any",
+        "direction": "INBOUND",
+        "condition_summary": "Successful user login during hours or days that deviate significantly from their established historical login patterns (e.g., 3 AM login on a Sunday for an office worker).",
+        "detection_criteria": {
+            "successful_login": true,
+            "user_historical_login_profile_deviation": true,
+            "current_time_outside_normal_hours": true,
+            "current_day_outside_normal_days": true
+        },
+        "false_positive_considerations": "Legitimate remote work, travel, or unusual work schedules. Requires flexible baselining and user awareness.",
+        "recommended_action": "Alert user and manager, force MFA, review account activity, initiate investigation if suspicious."
+    },
+    {
+        "name": "Web Parameter Tampering",
+        "description": "An attacker modifies parameters in HTTP requests (e.g., price, quantity, user ID) to bypass authorization, gain privileges, or manipulate application logic.",
+        "severity": "HIGH",
+        "category": "Exploitation",
+        "protocol": "HTTP/HTTPS",
+        "port": "80, 443",
+        "direction": "INBOUND",
+        "condition_summary": "HTTP requests where sensitive parameters (e.g., `price=`, `userId=`, `isAdmin=`) are manually modified from expected values, or sequential IDs are enumerated.",
+        "detection_criteria": {
+            "http_method": ["GET", "POST", "PUT"],
+            "param_contains_sensitive_keywords": ["price", "total", "admin", "user_id", "account_id"],
+            "value_deviation_from_expected": true,
+            "sequential_id_enumeration": true,
+            "http_referer_mismatch": true
+        },
+        "false_positive_considerations": "Legitimate application functionality that allows parameter modification (rare for sensitive ones). Requires knowing expected parameter values and ranges.",
+        "recommended_action": "Block request, implement server-side validation for all parameters, enforce least privilege at the application layer."
+    },
+    {
+        "name": "Suspicious Executable Metadata",
+        "description": "Detection of executable files with unusual or missing metadata (e.g., invalid digital signatures, mismatched company names, no version info), indicative of malware or tampered binaries.",
+        "severity": "HIGH",
+        "category": "Malware",
+        "protocol": "N/A (Endpoint/File analysis)",
+        "port": "N/A",
+        "direction": "N/A",
+        "condition_summary": "New executable files lacking valid digital signatures, having mismatched or generic company/product names, or zero-fill in typical metadata fields, found in suspicious locations.",
+        "detection_criteria": {
+            "file_extension": ["exe", "dll", "sys"],
+            "digital_signature_invalid_or_missing": true,
+            "company_name_generic_or_missing": true,
+            "product_name_generic_or_missing": true,
+            "file_path_suspicious_regex": "(C:\\\\Temp|C:\\\\Users\\\\Public)"
+        },
+        "false_positive_considerations": "Legitimate unsigned internal tools, custom scripts. Requires a whitelist of known good unsigned binaries.",
+        "recommended_action": "Quarantine file, alert endpoint security, investigate source of file, scan for malware."
+    },
+    {
+        "name": "SQL Injection (Out-of-Band)",
+        "description": "An attacker uses SQL injection to trigger a request to an external server (e.g., DNS lookup, HTTP request) to exfiltrate data or verify injection success when direct responses are not available.",
+        "severity": "CRITICAL",
+        "category": "Exploitation/Data Exfiltration",
+        "protocol": "HTTP/HTTPS",
+        "port": "80, 443",
+        "direction": "INBOUND",
+        "condition_summary": "HTTP requests containing SQL functions that attempt to trigger external network requests (e.g., `LOAD_FILE`, `UTL_HTTP.REQUEST`, `xp_cmdshell` with `nslookup`/`ping`) targeting an attacker-controlled domain.",
+        "detection_criteria": {
+            "payload_regex": [
+                "LOAD_FILE\\(.*?\\)",
+                "UTL_HTTP\\.REQUEST\\(.*?\\)",
+                "xp_cmdshell\\s+'(nslookup|ping)\\s+[a-zA-Z0-9-]+\\.attacker\\.com'"
+            ],
+            "http_method": ["GET", "POST"],
+            "param_location": ["query", "body"],
+            "outbound_dns_or_http_to_attacker_domain": true
+        },
+        "false_positive_considerations": "Extremely low false positive rate. These are very specific attack patterns.",
+        "recommended_action": "Block source IP, review application logs, patch vulnerable application, monitor network for outbound connections to suspicious domains."
+    },
+    {
+        "name": "Malicious Browser Extension Installation",
+        "description": "Detection of unauthorized or malicious browser extension installations that can monitor user activity, inject ads, or steal data.",
+        "severity": "HIGH",
+        "category": "Malware/Persistence",
+        "protocol": "N/A (Endpoint/Log based)",
+        "port": "N/A",
+        "direction": "N/A",
+        "condition_summary": "Creation of new browser extension folders/files in user profiles, especially if unsigned or from untrusted sources, or if associated with suspicious network connections.",
+        "detection_criteria": {
+            "file_creation_path_regex": "(Chrome\\\\User Data\\\\Default\\\\Extensions|Firefox\\\\Profiles\\\\.*\\\\extensions)",
+            "unsigned_extension_detected": true,
+            "network_connection_to_adware_c2": true,
+            "browser_process_suspicious_activity": true
+        },
+        "false_positive_considerations": "Legitimate manual extension installations by users. Requires strict browser policies and whitelisting of approved extensions.",
+        "recommended_action": "Remove extension, alert user, investigate source of installation, enforce browser security policies."
+    },
+    {
+        "name": "HTTP Response Smuggling",
+        "description": "An attacker sends an HTTP request that is interpreted differently by a front-end proxy/WAF and a back-end server, allowing the attacker to smuggle malicious requests past security devices.",
+        "severity": "HIGH",
+        "category": "Exploitation",
+        "protocol": "HTTP/HTTPS",
+        "port": "80, 443",
+        "direction": "INBOUND",
+        "condition_summary": "HTTP requests containing conflicting `Content-Length` and `Transfer-Encoding` headers, or ambiguous line endings, designed to confuse proxy/server parsers and allow smuggling of a second, hidden request.",
+        "detection_criteria": {
+            "http_method": ["POST", "PUT"],
+            "header_contains": ["Content-Length", "Transfer-Encoding"],
+            "header_values_conflict": true,
+            "double_crlf_before_body": true,
+            "hidden_second_request_signature": true
+        },
+        "false_positive_considerations": "Rare in legitimate traffic. Can be triggered by misconfigured proxies/servers but highly suspicious.",
+        "recommended_action": "Block request, ensure proxies and web servers are hardened against HTTP smuggling, use HTTP/2 where possible."
+    },
+    {
+        "name": "Web Cache Deception",
+        "description": "An attacker crafts a URL that exploits web server or CDN misconfigurations to cache sensitive user-specific content (e.g., login page with user's email) in a public cache, allowing it to be retrieved by other attackers.",
+        "severity": "MEDIUM",
+        "category": "Information Disclosure/Exploitation",
+        "protocol": "HTTP/HTTPS",
+        "port": "80, 443",
+        "direction": "INBOUND",
+        "condition_summary": "HTTP requests for static file extensions (e.g., `.jpg`, `.css`) but to dynamic content paths (`/user_profile.php/image.jpg`), leading to a cached response containing sensitive information.",
+        "detection_criteria": {
+            "http_method": "GET",
+            "uri_path_extension_mismatch": true,
+            "uri_path_contains_sensitive_keyword": ["profile", "account", "dashboard"],
+            "response_contains_sensitive_data_pattern": true,
+            "cache_hit_after_malicious_request": true
+        },
+        "false_positive_considerations": "Some legitimate URL rewriting or path handling that is not malicious. Requires deep understanding of application caching.",
+        "recommended_action": "Review web server/CDN caching configurations, ensure sensitive content is not cached based on static file extensions."
+    },
+    {
+        "name": "NTLM Relay Attack",
+        "description": "Detection of NTLM authentication requests being relayed to another target, potentially allowing an attacker to authenticate to other services without knowing the plaintext password.",
+        "severity": "CRITICAL",
+        "category": "Lateral Movement/Authentication",
+        "protocol": "TCP",
+        "port": "445, 80, 443",
+        "direction": "BIDIRECTIONAL",
+        "condition_summary": "An NTLM authentication sequence (Negotiate, Challenge, Authenticate) observed where the challenge/response is forwarded from one client-server pair to another, without the authenticating client being the origin.",
+        "detection_criteria": {
+            "ntlm_negotiate_present": true,
+            "ntlm_challenge_response_observed": true,
+            "same_ntlm_hash_across_multiple_sessions": true,
+            "source_ip_intermediate_or_suspicious": true
+        },
+        "false_positive_considerations": "Legitimate NTLM authentication, but relay is highly suspicious. Requires robust network forensics.",
+        "recommended_action": "Block source, disable NTLM where possible, enable SMB signing, implement EDR, deploy Credential Guard."
+    },
+    {
+        "name": "Insecure Direct Object Reference (IDOR) Attempt",
+        "description": "An attacker modifies a parameter value that directly refers to a system object (e.g., file name, user ID, record key) to access or modify unauthorized resources.",
+        "severity": "MEDIUM",
+        "category": "Authorization Bypass",
+        "protocol": "HTTP/HTTPS",
+        "port": "80, 443",
+        "direction": "INBOUND",
+        "condition_summary": "HTTP requests where numeric or sequential IDs in URL paths or parameters are modified (e.g., `/users/123` to `/users/124`), attempting to access unauthorized records, or privileged actions are performed with non-privileged user IDs.",
+        "detection_criteria": {
+            "http_method": ["GET", "POST", "PUT", "DELETE"],
+            "uri_param_numeric_sequential_change": true,
+            "body_param_numeric_sequential_change": true,
+            "user_role_mismatch_for_action": true,
+            "response_status_code_success_after_manipulation": [200, 204]
+        },
+        "false_positive_considerations": "Legitimate enumeration (e.g., paginated content) if not tied to sensitive resources. Requires understanding of application's object handling.",
+        "recommended_action": "Block request, implement robust authorization checks on the server-side for every request."
+    },
+    {
+        "name": "Server-Side Template Injection (SSTI) Attempt",
+        "description": "An attacker injects malicious template syntax into user-supplied input, which is then processed by a server-side template engine, potentially leading to remote code execution.",
+        "severity": "CRITICAL",
+        "category": "Exploitation",
+        "protocol": "HTTP/HTTPS",
+        "port": "80, 443",
+        "direction": "INBOUND",
+        "condition_summary": "HTTP requests containing template engine syntax (e.g., `{{7*7}}`, `${{7*7}}`, `<% System.out.println(7*7) %>`) in user-controlled parameters, often used for reconnaissance or RCE.",
+        "detection_criteria": {
+            "payload_regex": [
+                "\\{\\{.*?\\}\\}",
+                "\\$\\{\\{.*?\\}\\}",
+                "<%.*?%>",
+                "\\${self.__class__}"
+            ],
+            "http_method": ["GET", "POST"],
+            "param_location": ["query", "body"]
+        },
+        "false_positive_considerations": "Rare in legitimate input. Could be triggered by applications that allow template-like syntax for advanced content, but usually with strict sanitization.",
+        "recommended_action": "Block request, sanitize user input, update template engine, use sandboxed template environments."
+    },
+    {
+        "name": "SQL Injection (Second-Order)",
+        "description": "An attacker injects malicious SQL into input that is stored by the application, and then later retrieved and executed in a vulnerable context without re-validation, leading to delayed exploitation.",
+        "severity": "HIGH",
+        "category": "Exploitation",
+        "protocol": "HTTP/HTTPS",
+        "port": "80, 443",
+        "direction": "INBOUND",
+        "condition_summary": "Initial request stores malicious SQL (e.g., ' UNION SELECT') in a database, followed by a subsequent, legitimate request that triggers the execution of this stored malicious SQL, potentially causing errors or data exfiltration.",
+        "detection_criteria": {
+            "first_request_stores_payload": true,
+            "stored_payload_contains_sql_injection": true,
+            "second_request_triggers_execution": true,
+            "time_between_requests_long": true
+        },
+        "false_positive_considerations": "Requires advanced stateful analysis and correlation across multiple sessions and potentially different application layers. More prone to false negatives due to time aspect.",
+        "recommended_action": "Review application logic for proper input validation at both storage and retrieval points, conduct thorough code review and penetration testing."
+    },
+    {
+        "name": "Mass Assignment Vulnerability Attempt",
+        "description": "An attacker attempts to set properties on an object that they are not authorized to modify (e.g., `is_admin=true`), often by including unexpected parameters in API calls.",
+        "severity": "MEDIUM",
+        "category": "Authorization Bypass",
+        "protocol": "HTTP/HTTPS",
+        "port": "80, 443",
+        "direction": "INBOUND",
+        "condition_summary": "HTTP POST/PUT requests to update endpoints (`/users/update`, `/api/profile`) containing parameters that correspond to sensitive or administrative fields (e.g., `role`, `isAdmin`, `is_active_account`) for which the requesting user should not have direct write access.",
+        "detection_criteria": {
+            "http_method": ["POST", "PUT"],
+            "uri_path_regex": "\\/(update|save|profile)\\/",
+            "payload_contains_sensitive_attribute": ["role", "isAdmin", "active", "status", "privileged"],
+            "user_role_not_authorized_for_attribute_change": true
+        },
+        "false_positive_considerations": "Legitimate administrative updates. Requires a strong understanding of the application's data models and user roles.",
+        "recommended_action": "Block request, implement explicit whitelisting/blacklisting of properties for mass assignment, use DTOs (Data Transfer Objects)."
+    },
+    {
+        "name": "SSRF (Server-Side Request Forgery) via DNS Rebinding",
+        "description": "An attacker uses DNS rebinding to trick the server into making requests to an internal IP address after an initial external DNS resolution, bypassing network segmentation.",
+        "severity": "HIGH",
+        "category": "Exploitation",
+        "protocol": "HTTP/HTTPS",
+        "port": "80, 443",
+        "direction": "INBOUND/OUTBOUND",
+        "condition_summary": "Initial HTTP request to an external attacker-controlled domain, followed by the server attempting to resolve that same domain again, but now to an internal private IP address, and subsequent successful access to internal resources.",
+        "detection_criteria": {
+            "first_dns_resolution_external": true,
+            "second_dns_resolution_internal": true,
+            "time_between_resolutions_short": true,
+            "subsequent_http_request_to_internal_ip": true
+        },
+        "false_positive_considerations": "Complex to detect, often missed by traditional IDS. Requires correlation of DNS and HTTP traffic over time.",
+        "recommended_action": "Block suspicious DNS requests, implement whitelisting for server-side requests, disable DNS rebind protection on internal DNS."
+    },
+    {
+        "name": "Cryptomining Activity (Outbound to Pool)",
+        "description": "An internal host establishing persistent outbound connections to known cryptocurrency mining pools, indicating unauthorized cryptomining activity (often by malware).",
+        "severity": "MEDIUM",
+        "category": "Malware/Resource Abuse",
+        "protocol": "TCP",
+        "port": "3333, 4444, 5555, 7777, 8888, 14444",
+        "direction": "OUTBOUND",
+        "condition_summary": "Persistent outbound TCP connections from an internal host to IPs or domains associated with known cryptocurrency mining pools, often with high CPU usage on the source host.",
+        "detection_criteria": {
+            "dest_ip_in_cryptomining_blacklist": true,
+            "dest_port_in_mining_ports": true,
+            "sustained_connection_duration_min": 60,
+            "source_cpu_usage_high": true
+        },
+        "false_positive_considerations": "Legitimate cryptomining operations (if allowed). Requires up-to-date mining pool blacklists.",
+        "recommended_action": "Isolate host, investigate process, remove mining software/malware, monitor resource usage."
     }
 ]
